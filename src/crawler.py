@@ -1,38 +1,27 @@
 import asyncio
 import logging
-from dataclasses import dataclass
+from src.models import ValidationResult
 from playwright.async_api import async_playwright
+from src.config import *
 
 logging.basicConfig(level=logging.INFO)
-
-DEFAULT_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
-)
-
-@dataclass
-class ValidationResult:
-    url: str
-    text: str
-    parent: str
 
 def normalize_url(url: str) -> str:
     """Strip fragments and trailing slashes for consistency."""
     return url.split('#')[0].rstrip('/')
 
 class LinkScout:
-    def __init__(self, targets, max_concurrent_pages=1, user_agent=DEFAULT_UA, timeout=30000):
+    def __init__(self, targets):
         self.targets = targets
-        self.limit = asyncio.Semaphore(max_concurrent_pages)
+        self.limit = asyncio.Semaphore(CONCURRENCY_LIMIT)
         self.validation_queue: list[ValidationResult] = []
         self.visited: set[str] = set()
-        self.user_agent = user_agent
-        self.timeout = timeout
+        self.user_agent = DEFAULT_UA
+        self.timeout = TIMEOUT_SECONDS * 3000
 
     async def run(self):
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(user_agent=self.user_agent)
 
             for target in self.targets:
