@@ -1,0 +1,25 @@
+[
+    {
+        "base_url": "https://bpl.bc.ca/people-help/information-community-resources",
+        "levels": [
+            {
+                "selector": ".link-menu-tile-half a",
+                "action": "follow"
+            },
+            {
+                "selector": ".accordion a",
+                "action": "validate"
+            }
+            ]
+    },
+
+    {
+        "base_url": "https://newtobc.ca/library-information/library-programs/",
+        "levels": [
+            {
+                "selector": ".col a",
+                "action": "validate"
+            }
+            ]
+    }
+]
