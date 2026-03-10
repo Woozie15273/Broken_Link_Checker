@@ -19,3 +19,13 @@ DEFAULT_HEADER = {
 
 CONCURRENCY_LIMIT = 1
 TIMEOUT_SECONDS = 10
+
+FALLBACK_CODES = {403, 405, 501}
+
+SOFT_404_KEYWORDS = [
+    "not found", "page not found", "404",
+    "doesn't exist", "unavailable", "gone",
+    "missing", "error"
+]
+
+ERROR_PATHS = {"404", "notfound", "error", "missing"}

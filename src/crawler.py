@@ -34,8 +34,9 @@ class LinkScout:
     async def explore(self, context, url, levels):
         url = normalize_url(url)
         if not levels:
-            return
+            return # Step recursion if no more lvls remain
 
+        # Extract the current crawling lvl and the remaining lvls
         current_level, *remaining_levels = levels
         found_links = []
 
@@ -49,19 +50,22 @@ class LinkScout:
                 for el in elements:
                     href = await el.get_attribute('href')
                     if not href or href.startswith(('mailto:', 'tel:', 'javascript:')):
-                        continue
+                        continue # Skip invalid or non-navigable links
 
+                    # Convert relative URLs to absolute URLs
                     text = (await el.inner_text()).strip()
                     rel_url = normalize_url(await page.evaluate(
                         f'new URL("{href}", window.location.href).href'
                     ))
 
                     if current_level['action'] == 'follow':
+                        # Recursively crawl the link if not visited before
                         if rel_url not in self.visited:
                             self.visited.add(rel_url)
                             found_links.append(rel_url)
                             
                     elif current_level['action'] == 'validate':
+                        # Store the link for later validation
                         self.validation_queue.append(ValidationResult(rel_url, text, url))
 
             except Exception as e:
@@ -69,10 +73,11 @@ class LinkScout:
             finally:
                 await page.close()
 
+        # Recursively explore all discovered links for the next levels
         if found_links:
             await asyncio.gather(
                 *(self.explore(context, link, remaining_levels) for link in found_links),
-                return_exceptions=True
+                return_exceptions=True # Prevent one failure from stopping the whole batch
             )
 
     async def _trigger_js_content(self, page):

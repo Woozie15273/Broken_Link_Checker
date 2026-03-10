@@ -11,34 +11,30 @@ class Auditor:
         self.semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
         self.timeout = httpx.Timeout(TIMEOUT_SECONDS, connect=5.0)
         self.headers = DEFAULT_HEADER
-        self._fallback_codes = {403, 405, 501}
-
-        # Soft‑404 keyword list (can be expanded)
-        self._soft404_keywords = [
-            "not found", "page not found", "404",
-            "doesn't exist", "unavailable", "gone",
-            "missing", "error"
-        ]
-
-        # Known error paths
-        self._error_paths = {"404", "notfound", "error", "missing"}
+        self._fallback_codes = FALLBACK_CODES
+        self._soft404_keywords = SOFT_404_KEYWORDS
+        self._error_paths = ERROR_PATHS
 
     # ---------------------------------------------------------
     # Enhanced Soft‑404 Detection
     # ---------------------------------------------------------
     def _rule_path_fallback(self, url: str, response: httpx.Response) -> bool:
+        # To handle when missing page is redirected to the homepage instead of returning 404
         orig = httpx.URL(url).path.strip('/')
         final = response.url.path.strip('/')
         return bool(orig and not final)
 
     def _rule_small_content(self, text: str) -> bool:
+        # To handle when soft-404 pages contain small content size
         return len(text) < 80
 
     def _rule_keyword_match(self, text: str) -> bool:
+        # To handle page contains certain keywords
         lowered = text.lower()
         return any(k in lowered for k in self._soft404_keywords)
 
     def _rule_title_match(self, text: str) -> bool:
+        # To handle the keywords from the page title
         m = re.search(r"<title>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
         if not m:
             return False
@@ -46,6 +42,7 @@ class Auditor:
         return "404" in title or "not found" in title
 
     def _rule_error_path(self, response: httpx.Response) -> bool:
+        # To handle the keywords in the final url
         final_path = response.url.path.strip('/')
         return final_path in self._error_paths
 
@@ -65,22 +62,23 @@ class Auditor:
     # ---------------------------------------------------------
     async def _probe_url(self, client: httpx.AsyncClient, result: ValidationResult) -> AuditResult:
         async with self.semaphore:
-            await asyncio.sleep(1)
+            await asyncio.sleep(1) # Small delay to reduce burst load on target domains
 
             start = time.perf_counter()
             url = result.url.strip()
 
             try:
-                # GET-only request
+                # Starting from a GET instead of HEAD as the later is not supported by many sites
                 response = await client.get(url, follow_redirects=True)
 
                 latency = round(time.perf_counter() - start, 3)
 
-                # Enhanced Soft‑404 detection
+                # Soft‑404 detection only applies to successful (200 OK) responses.
                 is_soft_404 = False
                 if response.status_code == 200:
                     is_soft_404 = self._is_soft_404(url, response)
 
+                # Build a successful audit result, including final URL after redirects
                 return AuditResult(
                     url=url,
                     text=result.text,
@@ -106,17 +104,17 @@ class Auditor:
             url=res.url,
             text=res.text,
             parent=res.parent,
-            status_code=0,
-            final_url=res.url,
-            latency=0.0,
-            failure_type=msg
+            status_code=0, # - status_code is set to 0 because no valid HTTP status exists.
+            final_url=res.url, # - final_url remains the original URL since no redirect occurred.
+            latency=0.0, # - latency is 0.0 because the request never completed successfully.
+            failure_type=msg # - failure_type stores the specific error message for reporting.
         )
 
     # ---------------------------------------------------------
     # Main Audit Orchestrator
     # ---------------------------------------------------------
     async def audit_all(self, scout_results: List[ValidationResult]) -> List[AuditResult]:
-        # Deduplicate URLs
+        # Remove duplicate URLs while preserving the latest ValidationResult for each
         unique = {res.url: res for res in scout_results}
 
         limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
@@ -129,17 +127,17 @@ class Auditor:
             headers=self.headers
         ) as client:
 
-            # Run tasks concurrently
+            # Launch all URL probes concurrently
             async with asyncio.TaskGroup() as tg:
                 tasks = {
                     url: tg.create_task(self._probe_url(client, res))
                     for url, res in unique.items()
                 }
 
-        # Map results
+        # Collect completed results mapped by URL
         verdicts = {url: task.result() for url, task in tasks.items()}
 
-        # Expand back to original list
+        # Reconstruct results in the same order as the original input list
         return [
             AuditResult(
                 url=orig.url,
