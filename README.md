@@ -65,3 +65,7 @@ The Manager generates reports in `data/reports/` using the following logic:
 * **Priority Sorting**: Broken links and Soft 404s are floated to the top.
 * **Context Preservation**: Maps unique audit "verdicts" back to every parent page occurrence.
 * **Timestamped**: Filenames follow the `audit_YYYYMMDD_HHMM.csv` format.
+
+## Known Defects
+
+* Crawler didn't bypass 403 errors when being blocked
