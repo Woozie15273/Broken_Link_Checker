@@ -6,33 +6,39 @@ from src.config import *
 
 logging.basicConfig(level=logging.INFO)
 
-def normalize_url(url: str) -> str:
-    """Strip fragments and trailing slashes for consistency."""
-    return url.split('#')[0].rstrip('/')
-
 class LinkScout:
-    def __init__(self, targets):
-        self.targets = targets
+    def __init__(self):
         self.limit = asyncio.Semaphore(CONCURRENCY_LIMIT)
         self.validation_queue: list[ValidationResult] = []
         self.visited: set[str] = set()
         self.user_agent = DEFAULT_UA
         self.timeout = TIMEOUT_SECONDS * 3000
 
-    async def run(self):
+    def _normalize_url(self, url: str) -> str:
+        """Strip fragments and trailing slashes for consistency."""
+        return url.split('#')[0].rstrip('/')
+
+    async def run(self, targets: list) -> list[ValidationResult]:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(user_agent=self.user_agent)
+            
+            logging.info("Scout: Initiate the crawler.")
 
-            for target in self.targets:
+            for target in targets:
+                logging.info(f"Scout: Start working on: {target['base_url']}")
                 await self.explore(context, target['base_url'], target['levels'])
+                logging.info(f"Scout: Completed working on: {target['base_url']}")
 
             await context.close()
             await browser.close()
+
+            logging.info("Scout: Closing the crawler.")
+
             return self.validation_queue
 
     async def explore(self, context, url, levels):
-        url = normalize_url(url)
+        url = self._normalize_url(url)
         if not levels:
             return # Step recursion if no more lvls remain
 
@@ -54,7 +60,7 @@ class LinkScout:
 
                     # Convert relative URLs to absolute URLs
                     text = (await el.inner_text()).strip()
-                    rel_url = normalize_url(await page.evaluate(
+                    rel_url = self._normalize_url(await page.evaluate(
                         f'new URL("{href}", window.location.href).href'
                     ))
 

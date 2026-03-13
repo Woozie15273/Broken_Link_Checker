@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import httpx
 import time
-from typing import List, Dict
+from typing import List
 from src.models import ValidationResult, AuditResult
 from src.config import *
 import re
+
+logging.basicConfig(level=logging.INFO)
 
 class Auditor:
     def __init__(self):
@@ -19,43 +22,86 @@ class Auditor:
     # Enhanced Soft‑404 Detection
     # ---------------------------------------------------------
     def _rule_path_fallback(self, url: str, response: httpx.Response) -> bool:
-        # To handle when missing page is redirected to the homepage instead of returning 404
-        orig = httpx.URL(url).path.strip('/')
-        final = response.url.path.strip('/')
-        return bool(orig and not final)
+        """
+        Detect when a missing page is redirected to a completely different path.
+        Should NOT trigger on:
+        - http → https upgrade
+        - trailing slash differences
+        - trivial normalization
+        """
+        orig_url = httpx.URL(url)
+        final_url = response.url
+
+        # 1. Ignore scheme changes (http → https)
+        if orig_url.host == final_url.host and orig_url.path == final_url.path:
+            return False
+
+        # 2. Normalize trailing slashes
+        orig_path = orig_url.path.rstrip("/")
+        final_path = final_url.path.rstrip("/")
+
+        # If paths are identical after normalization → not soft 404
+        if orig_path == final_path:
+            return False
+        
+        # 3. Detect real fallback: original path is non-empty but final path becomes empty
+        #    Example: /abc → /
+        return bool(orig_path and not final_path)
 
     def _rule_small_content(self, text: str) -> bool:
-        # To handle when soft-404 pages contain small content size
-        return len(text) < 80
+        # Ignore whitespace-only content
+        cleaned = text.strip()
+
+        # Very small HTML skeleton should not count as soft 404
+        if cleaned.lower() in ("<html></html>", "<html><body></body></html>"):
+            return False
+
+        return len(cleaned) < 80
 
     def _rule_keyword_match(self, text: str) -> bool:
-        # To handle page contains certain keywords
         lowered = text.lower()
-        return any(k in lowered for k in self._soft404_keywords)
+
+        # Avoid matching keywords inside scripts or JSON
+        # e.g. {"error":"not found"} in API responses
+        visible_text = re.sub(r"<script.*?</script>", "", lowered, flags=re.DOTALL)
+        visible_text = re.sub(r"{.*?}", "", visible_text, flags=re.DOTALL)
+        
+        return any(k in visible_text for k in self._soft404_keywords)
 
     def _rule_title_match(self, text: str) -> bool:
-        # To handle the keywords from the page title
-        m = re.search(r"<title>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
+        m = re.search(r"<title[^>]*>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
         if not m:
             return False
-        title = m.group(1).lower()
-        return "404" in title or "not found" in title
+        title = m.group(1).strip().lower()
+
+        # Avoid false positives like "404 ways to cook eggs"
+        if re.search(r"\b404\b", title) or "not found" in title:
+            return True
+
+        return False
+
 
     def _rule_error_path(self, response: httpx.Response) -> bool:
-        # To handle the keywords in the final url
-        final_path = response.url.path.strip('/')
+        final_path = response.url.path.strip("/").lower()
+
+        # Normalize trailing slash
+        final_path = final_path.rstrip("/")
+
         return final_path in self._error_paths
 
     def _is_soft_404(self, url: str, response: httpx.Response) -> bool:
         text = response.text or ""
 
-        return (
-            self._rule_path_fallback(url, response)
-            or self._rule_small_content(text)
-            or self._rule_keyword_match(text)
-            or self._rule_title_match(text)
-            or self._rule_error_path(response)
-        )
+        rules = [
+            self._rule_path_fallback(url, response),
+            self._rule_small_content(text),
+            self._rule_keyword_match(text),
+            self._rule_title_match(text),
+            self._rule_error_path(response),
+        ]
+
+        # Soft 404 only if 2 or more rules hit
+        return sum(bool(r) for r in rules) >= 2
 
     # ---------------------------------------------------------
     # URL Probe
@@ -77,6 +123,8 @@ class Auditor:
                 is_soft_404 = False
                 if response.status_code == 200:
                     is_soft_404 = self._is_soft_404(url, response)
+
+                logging.info(f"Auditor: Completed audition on {url}")
 
                 # Build a successful audit result, including final URL after redirects
                 return AuditResult(

@@ -4,8 +4,8 @@ from src.crawler import LinkScout
 
 @pytest.mark.asyncio
 async def test_crawler(targets):
-    scout = LinkScout(targets)
-    result = await scout.run()
+    scout = LinkScout()
+    result = await scout.run(targets)
     assert_valid_results(result)
 
 def test_mock_validation(mock_results):

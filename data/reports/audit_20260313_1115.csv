@@ -1,0 +1,19 @@
+url,text,parent,status_code,final_url,latency,failure_type,is_broken
+http://www.coqlibrary.ca/programs-events/esl-programs-and-services,COQUITLAM,https://newtobc.ca/library-information/library-programs,404,https://coqlibrary.ca/programs-events/esl-programs-and-services,3.217,,True
+https://www.fvrl.bc.ca/events,FRASER VALLEY,https://newtobc.ca/library-information/library-programs,403,https://www.fvrl.bc.ca/events,0.378,,True
+https://nvdpl.ca/programs-events,NORTH VANCOUVER DISTRICT,https://newtobc.ca/library-information/library-programs,403,https://nvdpl.events.mylibrary.digital,1.003,,True
+https://www.yourlibrary.ca/events-calendar,RICHMOND,https://newtobc.ca/library-information/library-programs,404,https://www.yourlibrary.ca/events-calendar,2.38,,True
+https://www.surreylibraries.ca/events,SURREY LIBRARIES,https://newtobc.ca/library-information/library-programs,403,https://www.surreylibraries.ca/events,0.563,,True
+https://westvanlibrary.ca/events-programs,WEST VANCOUVER MEMORIAL,https://newtobc.ca/library-information/library-programs,403,https://westvanlibrary.ca/events-programs,0.321,,True
+https://bowenlibrary.ca/calendar,BOWEN ISLAND,https://newtobc.ca/library-information/library-programs,200,https://bowenlibrary.ca/calendar/,2.817,,False
+http://www.bpl.bc.ca/events,BURNABY,https://newtobc.ca/library-information/library-programs,200,https://www.bpl.bc.ca/events,1.924,,False
+http://gibsons.bc.libraries.coop/calendar,GIBSONS & DISTRICT,https://newtobc.ca/library-information/library-programs,200,https://gibsonslibrary.ca/calendar/,3.146,,False
+http://lillooet.bc.libraries.coop/calendar,LILLOOET AREA ASSOCIATION,https://newtobc.ca/library-information/library-programs,200,https://lillooet.bc.libraries.coop/calendar/,3.802,,False
+https://www.nwpl.ca/events-calendar,NEW WESTMINSTER,https://newtobc.ca/library-information/library-programs,200,https://www.nwpl.ca/programs-and-events/events-calendar/,0.616,,False
+http://www.nvcl.ca/calendar,NORTH VANCOUVER CITY,https://newtobc.ca/library-information/library-programs,200,https://www.nvcl.ca/calendar,1.538,,False
+https://pembertonlibrary.ca/library-events-calendar,PEMBERTON & DISTRICT,https://newtobc.ca/library-information/library-programs,200,https://pembertonlibrary.ca/library-events-calendar/,2.729,,False
+http://calendar.portmoodylibrary.ca/default/Month,PORT MOODY,https://newtobc.ca/library-information/library-programs,200,https://calendar.portmoodylibrary.ca/default/Month,2.936,,False
+http://sechelt.bc.libraries.coop/calendar,SECHELT,https://newtobc.ca/library-information/library-programs,200,https://sechelt.bc.libraries.coop/calendar/,3.042,,False
+http://squamish.bc.libraries.coop/calendar,SQUAMISH,https://newtobc.ca/library-information/library-programs,200,https://events.squamishlibrary.ca/events,2.527,,False
+https://vpl.bibliocommons.com/events/search/index,VANCOUVER,https://newtobc.ca/library-information/library-programs,202,https://vpl.bibliocommons.com/events/search/index,1.203,,False
+http://www.whistlerlibrary.ca/events,WHISTLER,https://newtobc.ca/library-information/library-programs,200,https://www.whistlerlibrary.ca/events/,1.68,,False

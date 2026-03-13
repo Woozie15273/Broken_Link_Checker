@@ -1,3 +1,8 @@
+from pathlib import Path
+
+# The single source of truth for the project root
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 DEFAULT_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
