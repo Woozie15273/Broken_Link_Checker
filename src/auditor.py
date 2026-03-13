@@ -106,6 +106,19 @@ class Auditor:
     # ---------------------------------------------------------
     # URL Probe
     # ---------------------------------------------------------
+    def _is_file_response(self, response: httpx.Response) -> bool:
+        content_type = response.headers.get("Content-Type", "").lower()
+        content_disp = response.headers.get("Content-Disposition", "").lower()
+
+        return (
+            "attachment" in content_disp
+            or content_type.startswith("application/")
+            or content_type.startswith("image/")
+            or content_type.startswith("audio/")
+            or content_type.startswith("video/")
+            or content_type == "application/octet-stream"
+        )
+    
     async def _probe_url(self, client: httpx.AsyncClient, result: ValidationResult) -> AuditResult:
         async with self.semaphore:
             await asyncio.sleep(1) # Small delay to reduce burst load on target domains
@@ -118,6 +131,18 @@ class Auditor:
                 response = await client.get(url, follow_redirects=True)
 
                 latency = round(time.perf_counter() - start, 3)
+
+                # Skip soft‑404 detection for file-like responses
+                if self._is_file_response(response):
+                    return AuditResult(
+                        url=url,
+                        text=result.text,
+                        parent=result.parent,
+                        status_code=response.status_code,
+                        final_url=str(response.url),
+                        latency=latency,
+                        failure_type=None
+                    )
 
                 # Soft‑404 detection only applies to successful (200 OK) responses.
                 is_soft_404 = False
